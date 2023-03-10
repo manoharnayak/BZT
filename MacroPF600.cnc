@@ -278,6 +278,7 @@ Sub user_2 ; Werkzeuglängenmessung
 	#5017 = [#4503]	; Maximale Werkzeuglänge
   ElSE
 	#5017 = #[5400 + #5016] ; von gespeicherte Tabelle
+  ENDIF
   #5019 = [#4507]	; Werkzeuglängensensorposition X-Achse
   #5020 = [#4508]	; Werkzeuglängensensorposition Y-Achse
   #5021 = 0 		; Gemessene Werkzeuglänge wird hier eingetragen
