@@ -189,81 +189,81 @@ ENDIF
 ;***************************************************************************************
 
 ;---------------------------------------------------------------------------------------
-Sub user_1 ; Z-Nullpunktermittlung
-;---------------------------------------------------------------------------------------
-; #185  - TEMP-Variable (Sensor Fehler-Zustand)
+;  Sub user_1 ; Z-Nullpunktermittlung
+; ;---------------------------------------------------------------------------------------
+; ; #185  - TEMP-Variable (Sensor Fehler-Zustand)
 
 
-	IF [[#3501 == 1] or [#4520 < 2]]then	; Wurde Werkzeug bereits Vermessen? 1=JA oder ist längensensor inaktiv geschaltet
+; 	IF [[#3501 == 1] or [#4520 < 2]]then	; Wurde Werkzeug bereits Vermessen? 1=JA oder ist längensensor inaktiv geschaltet
 
-		;--------------------------------------------------
-		; Sensorzustand prüfen
-		;--------------------------------------------------
-		 IF [#4400 == 0]				; Wenn Öffner (#4400 = 0)
-		     #185 = 1					;     Fehler-Zustand (1= offen)
-		 ELSE						; Wenn Schliesser (#4400 = 1)
-		     #185 = 0					;     Fehler-Zustand (0= geschlossen)
-		 ENDIF
+; 		;--------------------------------------------------
+; 		; Sensorzustand prüfen
+; 		;--------------------------------------------------
+; 		 IF [#4400 == 0]				; Wenn Öffner (#4400 = 0)
+; 		     #185 = 1					;     Fehler-Zustand (1= offen)
+; 		 ELSE						; Wenn Schliesser (#4400 = 1)
+; 		     #185 = 0					;     Fehler-Zustand (0= geschlossen)
+; 		 ENDIF
 
-		 IF [#5068 == #185]					; Sensorzustand prüfen
-			dlgmsg "Werkzeugsensor nicht angeschlossen"
-			IF [#5398 == 1]					; OK-Taste
-			    IF [#5068 == #185]				; Sensor immer noch nicht angeschlossen
-				errmsg "Z-Nullpunktermittlung abgebrochen -> Sensor Error"
-			    ENDIF
-			ELSE
-			    errmsg "Z-Nullpunktermittlung abgebrochen -> Sensor Error"
-			ENDIF	
-		 ENDIF
-		;--------------------------------------------------
+; 		 IF [#5068 == #185]					; Sensorzustand prüfen
+; 			dlgmsg "Werkzeugsensor nicht angeschlossen"
+; 			IF [#5398 == 1]					; OK-Taste
+; 			    IF [#5068 == #185]				; Sensor immer noch nicht angeschlossen
+; 				errmsg "Z-Nullpunktermittlung abgebrochen -> Sensor Error"
+; 			    ENDIF
+; 			ELSE
+; 			    errmsg "Z-Nullpunktermittlung abgebrochen -> Sensor Error"
+; 			ENDIF	
+; 		 ENDIF
+; 		;--------------------------------------------------
 
 
-		#4518 = 0 						; Merker Achse zurückfahren auf Z Vermessungspunkt) Sicherheitshalber rücksetzen
-		IF [#3505 == 0] 					; Merker ob Längenmessung von Handrad 1=Handrad
-			DlgMsg "Z-Nullpunkt ermitteln" 
-		ENDIF	
-		#3505 = 0						; Merker ob Längenmessung von Handrad 1=Handrad
-		IF [[#5398 == 1] AND [#5397 == 0]]			; OK Taste gedrückt und RenderModus AUS !!
-			M5						; Spindel ausschalten
-			msg "Taster wird angefahren"	
-			G38.2 G91 z-50 F[#4512] 			; Schnelles anfahren auf Taster bis Schaltsignaländerung
-			IF [#5067 == 1]					; Wenn Sensor gefunden wurde
-			    G38.2 G91 z20 F[#4513]			; Langsam von Taster runterfahren zur exakten Z-Ermittlung
-			    G90
-	 		    IF [#5067 == 1]				; Wenn Sensor gefunden wurde              
-				G0 Z#5063				; Schaltpunkt anfahren	
-				G92 Z[#4510] 				; Z-Nullpunkt übernehmen
+; 		#4518 = 0 						; Merker Achse zurückfahren auf Z Vermessungspunkt) Sicherheitshalber rücksetzen
+; 		IF [#3505 == 0] 					; Merker ob Längenmessung von Handrad 1=Handrad
+; 			DlgMsg "Z-Nullpunkt ermitteln" 
+; 		ENDIF	
+; 		#3505 = 0						; Merker ob Längenmessung von Handrad 1=Handrad
+; 		IF [[#5398 == 1] AND [#5397 == 0]]			; OK Taste gedrückt und RenderModus AUS !!
+; 			M5						; Spindel ausschalten
+; 			msg "Taster wird angefahren"	
+; 			G38.2 G91 z-50 F[#4512] 			; Schnelles anfahren auf Taster bis Schaltsignaländerung
+; 			IF [#5067 == 1]					; Wenn Sensor gefunden wurde
+; 			    G38.2 G91 z20 F[#4513]			; Langsam von Taster runterfahren zur exakten Z-Ermittlung
+; 			    G90
+; 	 		    IF [#5067 == 1]				; Wenn Sensor gefunden wurde              
+; 				G0 Z#5063				; Schaltpunkt anfahren	
+; 				G92 Z[#4510] 				; Z-Nullpunkt übernehmen
 
-				G0 Z[#4510 + 5] 			; Taster 5mm Freifahren
-				msg"Z-Nullpunktermittlung fertig"
-			    ELSE
-				G90 
-				errmsg "FEHLER: Sensor hat nicht geschaltet"
-			    ENDIF
+; 				G0 Z[#4510 + 5] 			; Taster 5mm Freifahren
+; 				msg"Z-Nullpunktermittlung fertig"
+; 			    ELSE
+; 				G90 
+; 				errmsg "FEHLER: Sensor hat nicht geschaltet"
+; 			    ENDIF
 
-			ELSE	;CANCEL
+; 			ELSE	;CANCEL
 
-			    G90 
-			    DlgMsg "WARNUNG: Kein Sensor gefunden! Erneut Versuchen?" 
-			    IF [#5398 == 1] ;OK   				
-				GoSub user_1
-			    ELSE
-				errmsg "Messung wurde abgebrochen!"
-			    ENDIF
-			ENDIF
-		ENDIF   	
-	ELSE
-		#3505 = 0					; Merker ob Längenmessung von Handrad 1=Handrad
-		DlgMsg "WARNUNG - Werkzeug zuerst Vermessen" 
-		IF [#5398 == 1] 	;OK
-	   		#4514 = #5071				; Zwischenspeicher für X Pos
-			#4515 = #5072				; Zwischenspeicher für Y Pos
-			#4516 = #5073				; Zwischenspeicher für Z Pos
-			#4518 = 1				; Merker setzen das zurückpositioniert wird
-			GoSub user_2
-		ENDIF
-	ENDIF
-Endsub
+; 			    G90 
+; 			    DlgMsg "WARNUNG: Kein Sensor gefunden! Erneut Versuchen?" 
+; 			    IF [#5398 == 1] ;OK   				
+; 				GoSub user_1
+; 			    ELSE
+; 				errmsg "Messung wurde abgebrochen!"
+; 			    ENDIF
+; 			ENDIF
+; 		ENDIF   	
+; 	ELSE
+; 		#3505 = 0					; Merker ob Längenmessung von Handrad 1=Handrad
+; 		DlgMsg "WARNUNG - Werkzeug zuerst Vermessen" 
+; 		IF [#5398 == 1] 	;OK
+; 	   		#4514 = #5071				; Zwischenspeicher für X Pos
+; 			#4515 = #5072				; Zwischenspeicher für Y Pos
+; 			#4516 = #5073				; Zwischenspeicher für Z Pos
+; 			#4518 = 1				; Merker setzen das zurückpositioniert wird
+; 			GoSub user_2
+; 		ENDIF
+; 	ENDIF
+; Endsub
 
 ;***************************************************************************************
 Sub user_2 ; Werkzeuglängenmessung
@@ -373,7 +373,8 @@ Sub user_2 ; Werkzeuglängenmessung
 		    #4501 = [#5021]				; Aktuelle Werkzeuglänge speichern = Ermittelte Werkzeuglänge
 		    #3502 = [#4501 - #4502]			; Werkzeuglängenunterschied ausrechnen
 
-		    G92 Z[#5003 - #3502]		 	; Z-Nullpunkt verschieben
+		    G43 H#5016				; Werkzeuglängenkorrektur aktivieren
+			;G92 Z[#5003 - #3502]		 	; Z-Nullpunkt verschieben
 
 		    ;Werkzeuglaenge und Werkzeugdurchmesser in Tabelle speichern
 		    ;#[5400 + #5016] = [#5053 - #4509]			;Berechnete Werkzeuglänge in Tabelle speichern
@@ -592,26 +593,26 @@ Sub user_5  ; Werkzeug wechseln
 Endsub
 
 ;***************************************************************************************
-Sub user_6  ; Werkzeugmanipulation
-;---------------------------------------------------------------------------------------
-    #5011 = [#5008]
-    Dlgmsg "!!! Werkzeugmanipulation !!!" "Alte Werkzeugnr" 5008" Neue Werkzeugnr" 5011
-    IF [#5011 > 99] THEN
-	Dlgmsg "Werkzeugnr Ungültig: Bitte Werkzeugnummer 1..99 Auswählen"
-	#5011 = #5008					; Neue Werkzeugnummer zurück setzen wie es war
-	M30
-    ELSE
-	#5015 = 1					; Wurde werkzeug erfolgreich gewechselt 1=Ja
-	IF [[#5011] > 0] THEN
-	    M6 T[#5011]
-	    ;G43
-	ELSE
-	    M6 T[#5011]
-	ENDIF
+; Sub user_6  ; Werkzeugmanipulation
+; ;---------------------------------------------------------------------------------------
+;     #5011 = [#5008]
+;     Dlgmsg "!!! Werkzeugmanipulation !!!" "Alte Werkzeugnr" 5008" Neue Werkzeugnr" 5011
+;     IF [#5011 > 99] THEN
+; 	Dlgmsg "Werkzeugnr Ungültig: Bitte Werkzeugnummer 1..99 Auswählen"
+; 	#5011 = #5008					; Neue Werkzeugnummer zurück setzen wie es war
+; 	M30
+;     ELSE
+; 	#5015 = 1					; Wurde werkzeug erfolgreich gewechselt 1=Ja
+; 	IF [[#5011] > 0] THEN
+; 	    M6 T[#5011]
+; 	    ;G43
+; 	ELSE
+; 	    M6 T[#5011]
+; 	ENDIF
 
-    ENDIF
+;     ENDIF
 
-Endsub
+; Endsub
 
 ;***************************************************************************************
 Sub user_7
