@@ -258,7 +258,7 @@ ENDIF
 ; 			#4515 = #5072				; Zwischenspeicher für Y Pos
 ; 			#4516 = #5073				; Zwischenspeicher für Z Pos
 ; 			#4518 = 1				; Merker setzen das zurückpositioniert wird
-; 			GoSub user_2
+; 			GoSub user_11
 ; 		ENDIF
 ; 	ENDIF
  Endsub
@@ -266,164 +266,6 @@ ENDIF
 ;***************************************************************************************
 Sub user_2 ; Werkzeuglängenmessung
 ;---------------------------------------------------------------------------------------
-; #185  - TEMP-Variable (Sensor Fehler-Zustand)
-; #4509 - Abstand Taster zum Spindelkopf  bei Z0 (G53)(negativer Wert)
-;
-
-
-  #5016 = [#5008]	; Aktuelle Werkzeugnummer
-  IF [#5017 == 0]
-	#5017 = [#4503]	; Maximale Werkzeuglänge
-  ElSE
-	#5017 = #[5400 + #5016] ; von gespeicherte Tabelle
-  ENDIF
-  #5019 = [#4507]	; Werkzeuglängensensorposition X-Achse
-  #5020 = [#4508]	; Werkzeuglängensensorposition Y-Achse
-  #5021 = 0 		; Gemessene Werkzeuglänge wird hier eingetragen
-
-   ;-VF-----------------------------------------------
-   ; Für 3D-Taster keine Längenmessung
-   ;--------------------------------------------------
-    IF [#5008 > 97]			; Werkzeuge 98 und 99 sind 3D-Taster - keine Längenmessung
-	msg "Werkzeug ist 3D-Taster -> Längenmessung nicht ausgeführt"
-	M30				; Programmende
-    ENDIF
-   ;--------------------------------------------------
-
-   ;--------------------------------------------------
-   ; Sensorzustand prüfen
-   ;--------------------------------------------------
-    IF [#4400 == 0]				; Wenn Öffner (#4400 = 0)
-	#185 = 1				;     Fehler-Zustand (1= offen)
-    ELSE					; Wenn Schliesser (#4400 = 1)
-	#185 = 0				;     Fehler-Zustand (0= geschlossen)
-    ENDIF
-
-    IF [#5068 == #185]					; Sensorzustand prüfen
-	dlgmsg "Werkzeugsensor nicht angeschlossen"
-	IF [#5398 == 1]					; OK-Taste
-	    IF [#5068 == #185]				; Sensor immer noch nicht angeschlossen
-		errmsg "Werkzeuglängenmessung abgebrochen -> Sensor Error"
-	    ENDIF
-	ELSE
-	    errmsg "Werkzeuglängenmessung abgebrochen -> Sensor Error"
-	ENDIF	
-    ENDIF
-   ;--------------------------------------------------
-
-    msg "Werkzeug wird vermessen"
-    dlgmsg "Soll Werkzeug Vermessen werden" "Werkzeuglänge ca:" 5017
-
-    IF [[#5398 == 1] AND [#5397 == 0]]		; OK Taste wurde gedrückt und RenderModus ist AUS !!
-
-	IF [[#5017] <= 0] THEN					; Testen ob Werkzeuglänge negativ
-	    DlgMsg "!!! WARNUNG: Werkzeuglänge muss positiv sein !!!" "Werkzeuglänge ca:" 5017
-	    ; IF [#5398 == 1] ;OK
-	    ;	GoSub user_2
-	    ; ELSE
-	    ;	GoSub user_2
-	    ; ENDIF
-	ENDIF
-
-	IF [[#4509 + #5017 + 10] > [#4506]] THEN		; Testen ob errechneter Wert höher wie sicherheitshöhe ist
-	    DlgMsg "!!! WARNUNG: Werkzeug zu lang !!!" "Werkzeuglänge ca:" 5017
-	    ; IF [#5398 == 1] ;OK
-	    ;	GoSub user_2
-	    ; ELSE
-	    ;	GoSub user_2
-	    ; ENDIF
-	ENDIF
-
-	IF [ [#5017 <= 0] OR [[#4509 + #5017 + 10] > [#4506]] ]	;#VF# Immer noch falsche Eingabe
-	    errmsg "Werkzeuglängenmessung Abgebrochen"
-	ENDIF
-
-
-	M5 M9
-	G53 G0 z[#4506]						; Z Sicherheitshöhe anfahren [Maschinenkoordinate] 
-       	G53 G0 x[#5019] y[#5020]				; Werkzeuglängensensor Position anfahren
-
-	;--------------------------------
-	; Eilgeschwindigkeit zum Sensor 
-	;--------------------------------
-	 G53 G0 z[#4509 + #5017 + 10]				; Abstand Z zum Sensor in G0 anfahren - Spindelkopfabstand + max.Werkzeuglänge + 10
-	;--------------------------------
-
-	G53 G38.2 Z[#4509] F[#4504]				; Z mit Antastgeschwindigkeit #4504 an den Sensor fahren
-
-	IF [#5067 == 1]						; Wenn Sensor gefunden wurde
-	    G91 G38.2 Z20 F[#4505]				; Z mit Messgeschwindigkeit #4505 vom Sensor wegfahren bis Taster erneut schaltet
-	    G90							; Modus für absolute Koordinaten
-
-	    IF [#5067 == 1]					; Wenn Sensor gefunden wurde, wird Tastpunkt in #5053 gespeichert
-
-		G00 g53 z#4506					; Z Sicherheitshöhe anfahren [Maschinenkoordinate]
-
-		;***********Bei Direktvermessung Tabelle auf 0 schreiben
-		#[5400 + #5016] = [#5053 - #4509]			;Berechnete Werkzeuglänge in Tabelle speichern
-		#[5500 + #5016] = 0 ;#5018				;Werkzeugdurchmesser in Tabelle speichern
-		;***********Bei Direktvermessung Tabelle auf 0 schreiben Ende
-
-		#5021 = [#5053 - #4509]				; Berechnung Werkzeuglänge = Tastpunkt  - chuck height
-		msg "Werkzeuglänge = " #5021
-
-		IF [#3501 == 1] 				; Wurde Werkzeug bereits Vermessen? 1=JA
-		    #4502 = [#4501]				; Alte Werkzeuglänge speichern
-		    #4501 = [#5021]				; Aktuelle Werkzeuglänge speichern = Ermittelte Werkzeuglänge
-		    #3502 = [#4501 - #4502]			; Werkzeuglängenunterschied ausrechnen
-
-		    G43 H#5016				; Werkzeuglängenkorrektur aktivieren
-			;G92 Z[#5003 - #3502]		 	; Z-Nullpunkt verschieben
-
-		    ;Werkzeuglaenge und Werkzeugdurchmesser in Tabelle speichern
-		    ;#[5400 + #5016] = [#5053 - #4509]			;Berechnete Werkzeuglänge in Tabelle speichern
-		    ;#[5500 + #5016] = #5018				;Werkzeugdurchmesser in Tabelle speichern
-		    ;msg "Gemessene Werkzeuglaenge="#[5400 + #5016]" gespeichert in Werkzeugnr. "#5016
-		ELSE
-		    #4501 = [#5021]				; Aktuelle Werkzeuglänge eintragen
-            	ENDIF
-
-		IF [#4518 == 1] then				; Merker: Zurückfahren auf Z Vermessungspunkt (1=JA, 0=NEIN)
-		    G0 G53 Z#4506				; Z Sicherheitshöhe anfahren [Maschinenkoordinate]
-		    G0 G53 X#4514 Y#4515			; Repositionieren
-		    #4518 = 0					; Merker: Zurückfahren auf Vermessungspunkt (1=JA, 0=NEIN)
-		    #3501 = 1					; Merker: Wurde Werkzeug bereits Vermessen? (1=JA, 0=NEIN)
-		ELSE
-		    IF [#4519 == 0] then			; ### 0 ### Was tun nach Werkzeugvermessung: 0= vordefinierten Punkt anfahren
-			G0 G53 Z#4506				; Z Sicherheitshöhe anfahren [Maschinenkoordinate]
-			G0 G53 X#4524 Y#4525			; Vordefinierten Punkt anfahren 
-		    ENDIF
-
-		    IF [#4519 == 1] then			; ### 1 ### Was tun nach Werkzeugvermessung: 1= Werkstücknullpunkt fahren 
-			G0 G53 Z#4506				; Z Sicherheitshöhe anfahren [Maschinenkoordinate]
-			G0 X0 Y0				; Werkstücknullpunkt anfahren
-		    ENDIF
-
-		    IF [#4519 == 2] then			; ### 2 ### Was tun nach Werkzeugvermessung: 2= Manuelle Werkzeugwechselpos anfahren
-			G0 G53 Z#4523				; Werkzeugwechselpos Z anfahren
-			G0 G53 X#4521 Y#4522			; Werkzeugwechselpos XY anfahren
-		    ENDIF
-
-		    IF [#4519 == 3] then			; ### 3 ### Was tun nach Werkzeugvermessung: 3= Maschinennullpunkt anfahren
-			G0 G53 Z#4506				; Z Sicherheitshöhe anfahren [Maschinenkoordinate]
-			G0 G53 X0 Y0				; Maschinennullpunkt anfahren
-		    ENDIF
-
-		    ; IF [#4519 == 4] then			; ### 4 ### Was tun nach Werkzeugvermessung: 4= Stehen bleiben
-		    ; ENDIF
-					
-		ENDIF
-
-		#4518 = 0					; Merker: Zurückfahren auf Vermessungspunkt (1=JA, 0=NEIN)
-           	#3501 = 1					; Merker: Wurde Werkzeug bereits Vermessen? (1=JA, 0=NEIN)
-	    ELSE
-		errmsg "FEHLER: Kein Sensor gefunden - RESET BETäTIGEN"
-	    ENDIF
-
-	ELSE
-	    errmsg "FEHLER: Kein Sensor gefunden - Messung abgebrochen"
-	ENDIF
-    ENDIF
 
 Endsub
 
@@ -616,8 +458,9 @@ Endsub
 ;***************************************************************************************
 Sub user_7
 ;---------------------------------------------------------------------------------------
-   	msg "sub user_7"
-	DlgMsg "Keine Funktion hinterlegt"
+;  Z-nullpunkt mit G54 einstellen
+G10 L2 P1 Z[#5073-#5010]	; Z-Nullpunkt mit G54 einstellen
+G54 G90 G0 G43 Z-5 
 Endsub
 
 ;***************************************************************************************
@@ -718,6 +561,171 @@ Sub user_10
 	    	G53 X0 Y0
 	ENDIF
 Endsub
+;***************************************************************************************
+Sub user_11 ; Werkzeuglängenmessung
+;---------------------------------------------------------------------------------------
+; #185  - TEMP-Variable (Sensor Fehler-Zustand)
+; #4509 - Abstand Taster zum Spindelkopf  bei Z0 (G53)(negativer Wert)
+;
+
+
+  #5016 = [#5008]	; Aktuelle Werkzeugnummer
+  IF [#5017 == 0]
+	#5017 = [#4503]	; Maximale Werkzeuglänge
+  ElSE
+	#5017 = #[5400 + #5016] ; von gespeicherte Tabelle
+  ENDIF
+  #5019 = [#4507]	; Werkzeuglängensensorposition X-Achse
+  #5020 = [#4508]	; Werkzeuglängensensorposition Y-Achse
+  #5021 = 0 		; Gemessene Werkzeuglänge wird hier eingetragen
+
+   ;-VF-----------------------------------------------
+   ; Für 3D-Taster keine Längenmessung
+   ;--------------------------------------------------
+    IF [#5008 > 97]			; Werkzeuge 98 und 99 sind 3D-Taster - keine Längenmessung
+	msg "Werkzeug ist 3D-Taster -> Längenmessung nicht ausgeführt"
+	M30				; Programmende
+    ENDIF
+   ;--------------------------------------------------
+
+   ;--------------------------------------------------
+   ; Sensorzustand prüfen
+   ;--------------------------------------------------
+    IF [#4400 == 0]				; Wenn Öffner (#4400 = 0)
+	#185 = 1				;     Fehler-Zustand (1= offen)
+    ELSE					; Wenn Schliesser (#4400 = 1)
+	#185 = 0				;     Fehler-Zustand (0= geschlossen)
+    ENDIF
+
+    IF [#5068 == #185]					; Sensorzustand prüfen
+	dlgmsg "Werkzeugsensor nicht angeschlossen"
+	IF [#5398 == 1]					; OK-Taste
+	    IF [#5068 == #185]				; Sensor immer noch nicht angeschlossen
+		errmsg "Werkzeuglängenmessung abgebrochen -> Sensor Error"
+	    ENDIF
+	ELSE
+	    errmsg "Werkzeuglängenmessung abgebrochen -> Sensor Error"
+	ENDIF	
+    ENDIF
+   ;--------------------------------------------------
+
+    msg "Werkzeug wird vermessen"
+    dlgmsg "Soll Werkzeug Vermessen werden" "Werkzeuglänge ca:" 5017
+
+    IF [[#5398 == 1] AND [#5397 == 0]]		; OK Taste wurde gedrückt und RenderModus ist AUS !!
+
+	IF [[#5017] <= 0] THEN					; Testen ob Werkzeuglänge negativ
+	    DlgMsg "!!! WARNUNG: Werkzeuglänge muss positiv sein !!!" "Werkzeuglänge ca:" 5017
+	    ; IF [#5398 == 1] ;OK
+	    ;	GoSub user_11
+	    ; ELSE
+	    ;	GoSub user_11
+	    ; ENDIF
+	ENDIF
+
+	IF [[#4509 + #5017 + 10] > [#4506]] THEN		; Testen ob errechneter Wert höher wie sicherheitshöhe ist
+	    DlgMsg "!!! WARNUNG: Werkzeug zu lang !!!" "Werkzeuglänge ca:" 5017
+	    ; IF [#5398 == 1] ;OK
+	    ;	GoSub user_11
+	    ; ELSE
+	    ;	GoSub user_11
+	    ; ENDIF
+	ENDIF
+
+	IF [ [#5017 <= 0] OR [[#4509 + #5017 + 10] > [#4506]] ]	;#VF# Immer noch falsche Eingabe
+	    errmsg "Werkzeuglängenmessung Abgebrochen"
+	ENDIF
+
+
+	M5 M9
+	G53 G0 z[#4506]						; Z Sicherheitshöhe anfahren [Maschinenkoordinate] 
+       	G53 G0 x[#5019] y[#5020]				; Werkzeuglängensensor Position anfahren
+
+	;--------------------------------
+	; Eilgeschwindigkeit zum Sensor 
+	;--------------------------------
+	 G53 G0 z[#4509 + #5017 + 10]				; Abstand Z zum Sensor in G0 anfahren - Spindelkopfabstand + max.Werkzeuglänge + 10
+	;--------------------------------
+
+	G53 G38.2 Z[#4509] F[#4504]				; Z mit Antastgeschwindigkeit #4504 an den Sensor fahren
+
+	IF [#5067 == 1]						; Wenn Sensor gefunden wurde
+	    G91 G38.2 Z20 F[#4505]				; Z mit Messgeschwindigkeit #4505 vom Sensor wegfahren bis Taster erneut schaltet
+	    G90							; Modus für absolute Koordinaten
+
+	    IF [#5067 == 1]					; Wenn Sensor gefunden wurde, wird Tastpunkt in #5053 gespeichert
+
+		G00 g53 z#4506					; Z Sicherheitshöhe anfahren [Maschinenkoordinate]
+
+		;***********Bei Direktvermessung Tabelle auf 0 schreiben
+		#[5400 + #5016] = [#5053 - #4509]			;Berechnete Werkzeuglänge in Tabelle speichern
+		#[5500 + #5016] = 0 ;#5018				;Werkzeugdurchmesser in Tabelle speichern
+		;***********Bei Direktvermessung Tabelle auf 0 schreiben Ende
+
+		#5021 = [#5053 - #4509]				; Berechnung Werkzeuglänge = Tastpunkt  - chuck height
+		msg "Werkzeuglänge = " #5021
+
+		IF [#3501 == 1] 				; Wurde Werkzeug bereits Vermessen? 1=JA
+		    #4502 = [#4501]				; Alte Werkzeuglänge speichern
+		    #4501 = [#5021]				; Aktuelle Werkzeuglänge speichern = Ermittelte Werkzeuglänge
+		    #3502 = [#4501 - #4502]			; Werkzeuglängenunterschied ausrechnen
+
+		    ;G43 H#5016				; Werkzeuglängenkorrektur aktivieren
+			;G92 Z[#5003 - #3502]		 	; Z-Nullpunkt verschieben
+
+		    ;Werkzeuglaenge und Werkzeugdurchmesser in Tabelle speichern
+		    ;#[5400 + #5016] = [#5053 - #4509]			;Berechnete Werkzeuglänge in Tabelle speichern
+		    ;#[5500 + #5016] = #5018				;Werkzeugdurchmesser in Tabelle speichern
+		    ;msg "Gemessene Werkzeuglaenge="#[5400 + #5016]" gespeichert in Werkzeugnr. "#5016
+		ELSE
+		    #4501 = [#5021]				; Aktuelle Werkzeuglänge eintragen
+        ENDIF
+		
+		G43 H#5016				; Werkzeuglängenkorrektur aktivieren
+		
+		IF [#4518 == 1] then				; Merker: Zurückfahren auf Z Vermessungspunkt (1=JA, 0=NEIN)
+		    G0 G53 Z#4506				; Z Sicherheitshöhe anfahren [Maschinenkoordinate]
+		    G0 G53 X#4514 Y#4515			; Repositionieren
+		    #4518 = 0					; Merker: Zurückfahren auf Vermessungspunkt (1=JA, 0=NEIN)
+		    #3501 = 1					; Merker: Wurde Werkzeug bereits Vermessen? (1=JA, 0=NEIN)
+		ELSE
+		    IF [#4519 == 0] then			; ### 0 ### Was tun nach Werkzeugvermessung: 0= vordefinierten Punkt anfahren
+			G0 G53 Z#4506				; Z Sicherheitshöhe anfahren [Maschinenkoordinate]
+			G0 G53 X#4524 Y#4525			; Vordefinierten Punkt anfahren 
+		    ENDIF
+
+		    IF [#4519 == 1] then			; ### 1 ### Was tun nach Werkzeugvermessung: 1= Werkstücknullpunkt fahren 
+			G0 G53 Z#4506				; Z Sicherheitshöhe anfahren [Maschinenkoordinate]
+			G0 X0 Y0				; Werkstücknullpunkt anfahren
+		    ENDIF
+
+		    IF [#4519 == 2] then			; ### 2 ### Was tun nach Werkzeugvermessung: 2= Manuelle Werkzeugwechselpos anfahren
+			G0 G53 Z#4523				; Werkzeugwechselpos Z anfahren
+			G0 G53 X#4521 Y#4522			; Werkzeugwechselpos XY anfahren
+		    ENDIF
+
+		    IF [#4519 == 3] then			; ### 3 ### Was tun nach Werkzeugvermessung: 3= Maschinennullpunkt anfahren
+			G0 G53 Z#4506				; Z Sicherheitshöhe anfahren [Maschinenkoordinate]
+			G0 G53 X0 Y0				; Maschinennullpunkt anfahren
+		    ENDIF
+
+		    ; IF [#4519 == 4] then			; ### 4 ### Was tun nach Werkzeugvermessung: 4= Stehen bleiben
+		    ; ENDIF
+					
+		ENDIF
+
+		#4518 = 0					; Merker: Zurückfahren auf Vermessungspunkt (1=JA, 0=NEIN)
+           	#3501 = 1					; Merker: Wurde Werkzeug bereits Vermessen? (1=JA, 0=NEIN)
+	    ELSE
+		errmsg "FEHLER: Kein Sensor gefunden - RESET BETäTIGEN"
+	    ENDIF
+
+	ELSE
+	    errmsg "FEHLER: Kein Sensor gefunden - Messung abgebrochen"
+	ENDIF
+    ENDIF
+
+Endsub
 
 ;***************************************************************************************
 Sub home_z ;Homing per axis
@@ -786,6 +794,49 @@ sub home_all
 
     m30
 endsub
+;***************************************************************************************
+Sub user_13
+;---------------------------------------------------------------------------------------
+;  X-nullpunkt mit G54 einstellen
+dlgmsg "von links (1) oder rechts (2) ?  " 4563
+
+IF [#4563 == 1] then
+	G10 L2 P1 X[#5071+#5009]	; X-Nullpunkt mit G54 einstellen
+ElSE
+	IF [#4563 == 2] then
+		G10 L2 P1 X[#5071-#5009]	; X-Nullpunkt mit G54 einstellen
+	ELSE
+		errmsg "Fehler: Keine richtige Eingabe"
+	ENDIF
+ENDIF
+
+Endsub
+;***************************************************************************************
+Sub user_14
+;---------------------------------------------------------------------------------------
+;  Y-nullpunkt mit G54 einstellen
+dlgmsg "von oben (1) oder unten (2) ?  " 4564
+
+IF [#4564 == 1] then
+	G10 L2 P1 Y[#5072-#5009]	; Y-Nullpunkt mit G54 einstellen
+ElSE
+	IF [#4564 == 2] then
+		G10 L2 P1 Y[#5072+#5009]	; Y-Nullpunkt mit G54 einstellen
+	ELSE
+		errmsg "Fehler: Keine richtige Eingabe"
+	ENDIF
+ENDIF
+
+Endsub
+
+;***************************************************************************************
+Sub user_15
+;---------------------------------------------------------------------------------------
+;  Z-nullpunkt mit G54 einstellen
+G10 L2 P1 Z[#5073-#5010]	; Z-Nullpunkt mit G54 einstellen
+G54 G90 G0 G43 Z5 
+Endsub
+
 
 ;***************************************************************************************
 Sub zero_set_rotation
@@ -916,7 +967,7 @@ sub change_tool
 	        M6 T[#5011]				; Neue Werkzeugnummer setzen
 
 		IF [#4520 == 2] 			; Werkzeugwechslertyp  0= Mache garnix 1 = Nur WPos Anfahren 2= WPos anfahren  + Vermessen 
-		    gosub user_2			; Werkzeuglängenmessung aufrufen  [ACHTUNG - Muss unbedingt nach M6 T.. gemacht werden]
+		    gosub user_11			; Werkzeuglängenmessung aufrufen  [ACHTUNG - Muss unbedingt nach M6 T.. gemacht werden]
 		ENDIF
 
 		#5015 = 0				; Werkzeugwechsel ausgeführt 1=Ja
@@ -1085,7 +1136,7 @@ ENDSUB
 ;***************************************************************************************
 SUB xhc_macro_2
 ;---------------------------------------------------------------------------------------
-	gosub user_2 ;Werkzeugvermessung
+	gosub user_11 ;Werkzeugvermessung
 ENDSUB
 ;***************************************************************************************
 SUB xhc_macro_3
