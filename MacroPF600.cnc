@@ -418,19 +418,6 @@ Endsub
 Sub user_5  ; Werkzeug wechseln
 ;---------------------------------------------------------------------------------------
 
-    Dlgmsg "Welches Werkzeug soll eingewechselt werden" " Neue Werkzeugnr.:" 5011
-    IF [#5398 == 1] ;OK
-	IF [#5011 > 99] THEN
-	    Dlgmsg "Werkzeugnr Ungültig: Bitte Werkzeugnummer 1..99 Auswählen"
-	    #5011 = #5008				; Neue Werkzeugnummer zurück setzen wie es war
-	ELSE
-	    #3510 = 1					; Merker ob Werkzeugwechsel von GUI aufgerufen (1= von GUI aufgerufen)
-	    gosub change_tool
-
-	    #3510 = 0					; Merker ob Werkzeugwechsel von GUI aufgerufen zurück setzen
-	ENDIF
-    ENDIF
-
 Endsub
 
 ;***************************************************************************************
@@ -459,8 +446,6 @@ Endsub
 Sub user_7
 ;---------------------------------------------------------------------------------------
 ;  Z-nullpunkt mit G54 einstellen
-G10 L2 P1 Z[#5073-#5010]	; Z-Nullpunkt mit G54 einstellen
-G54 G90 G0 G43 Z-5 
 Endsub
 
 ;***************************************************************************************
@@ -611,6 +596,8 @@ Sub user_11 ; Werkzeuglängenmessung
 
     msg "Werkzeug wird vermessen"
     dlgmsg "Soll Werkzeug Vermessen werden" "Werkzeuglänge ca:" 5017
+	dlgmsg "Werkzeug Durchmesser eingeben" "Neue Werkzeug Durchmesser:" 5018
+	#[5500 + #5016] = #5018
 
     IF [[#5398 == 1] AND [#5397 == 0]]		; OK Taste wurde gedrückt und RenderModus ist AUS !!
 
@@ -659,7 +646,7 @@ Sub user_11 ; Werkzeuglängenmessung
 
 		;***********Bei Direktvermessung Tabelle auf 0 schreiben
 		#[5400 + #5016] = [#5053 - #4509]			;Berechnete Werkzeuglänge in Tabelle speichern
-		#[5500 + #5016] = 0 ;#5018				;Werkzeugdurchmesser in Tabelle speichern
+		;#[5500 + #5016] = 0 ;#5018				;Werkzeugdurchmesser in Tabelle speichern
 		;***********Bei Direktvermessung Tabelle auf 0 schreiben Ende
 
 		#5021 = [#5053 - #4509]				; Berechnung Werkzeuglänge = Tastpunkt  - chuck height
@@ -794,17 +781,38 @@ sub home_all
 
     m30
 endsub
+
+;***************************************************************************************
+Sub user_12  ; Werkzeug wechseln
+;---------------------------------------------------------------------------------------
+
+    Dlgmsg "Welches Werkzeug soll eingewechselt werden" " Neue Werkzeugnr.:" 5011
+    IF [#5398 == 1] ;OK
+	IF [#5011 > 99] THEN
+	    Dlgmsg "Werkzeugnr Ungültig: Bitte Werkzeugnummer 1..99 Auswählen"
+	    #5011 = #5008				; Neue Werkzeugnummer zurück setzen wie es war
+	ELSE
+	    #3510 = 1					; Merker ob Werkzeugwechsel von GUI aufgerufen (1= von GUI aufgerufen)
+	    gosub change_tool
+
+	    #3510 = 0					; Merker ob Werkzeugwechsel von GUI aufgerufen zurück setzen
+	ENDIF
+    ENDIF
+
+Endsub
 ;***************************************************************************************
 Sub user_13
 ;---------------------------------------------------------------------------------------
 ;  X-nullpunkt mit G54 einstellen
-dlgmsg "von links (1) oder rechts (2) ?  " 4563
+dlgmsg "von links (1) oder rechts (2) ?  " "1 oder 2?" 4563
 
 IF [#4563 == 1] then
-	G10 L2 P1 X[#5071+#5009]	; X-Nullpunkt mit G54 einstellen
+	#4565 = [-#5009]
+	G10 L20 P1 X#4565	; X-Nullpunkt mit G54 einstellen
 ElSE
 	IF [#4563 == 2] then
-		G10 L2 P1 X[#5071-#5009]	; X-Nullpunkt mit G54 einstellen
+		#4565 = [#5009]
+		G10 L20 P1 X#4565	; X-Nullpunkt mit G54 einstellen
 	ELSE
 		errmsg "Fehler: Keine richtige Eingabe"
 	ENDIF
@@ -815,13 +823,15 @@ Endsub
 Sub user_14
 ;---------------------------------------------------------------------------------------
 ;  Y-nullpunkt mit G54 einstellen
-dlgmsg "von oben (1) oder unten (2) ?  " 4564
+dlgmsg "von oben (1) oder unten (2) ?  " "1 oder 2?" 4564
 
 IF [#4564 == 1] then
-	G10 L2 P1 Y[#5072-#5009]	; Y-Nullpunkt mit G54 einstellen
+	#4565 = [#5009]
+	G10 L20 P1 Y#4565	; Y-Nullpunkt mit G54 einstellen
 ElSE
 	IF [#4564 == 2] then
-		G10 L2 P1 Y[#5072+#5009]	; Y-Nullpunkt mit G54 einstellen
+		#4565 = [-#5009]
+		G10 L20 P1 Y#4565	; Y-Nullpunkt mit G54 einstellen
 	ELSE
 		errmsg "Fehler: Keine richtige Eingabe"
 	ENDIF
@@ -833,8 +843,8 @@ Endsub
 Sub user_15
 ;---------------------------------------------------------------------------------------
 ;  Z-nullpunkt mit G54 einstellen
-G10 L2 P1 Z[#5073-#5010]	; Z-Nullpunkt mit G54 einstellen
-G54 G90 G0 G43 Z5 
+G10 L20 P1 Z0	; Z-Nullpunkt mit G54 einstellen
+G0 G54 G43 Z0.5
 Endsub
 
 
